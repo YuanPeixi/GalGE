@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GalEngine.Sample")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8b054c7d927efb9cf05b81f95d50f8b7a3f3e51f")]
 [assembly: System.Reflection.AssemblyProductAttribute("GalEngine.Sample")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GalEngine.Sample")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

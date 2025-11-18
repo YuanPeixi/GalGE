@@ -25,7 +25,11 @@ namespace GalEngineSample
 
             _engine = new StoryEngine();
             _engine.NodeChanged += OnNodeChanged;
-            _engine.StoryEnded += () => MessageBox.Show("故事结束");
+            _engine.StoryEnded += () =>
+            {
+                MessageBox.Show("故事结束");
+                Close();
+            };
 
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "story.xml");
             _engine.LoadFromFile(path);

@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Story Graph</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.2/standalone/umd/vis-network.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; }
+    #mynetwork { width: 100%; height: 100vh; border: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+<div id="mynetwork"></div>
+<script>
+const nodes = [{"id": "start", "label": "start", "title": "node / start\nnode"}, {"id": "Alice", "label": "Alice", "title": "character / Alice\nAlice"}, {"id": "n1", "label": "n1", "title": "node / n1\nnode"}, {"id": "n2", "label": "n2", "title": "node / n2\nnode"}, {"id": "n_friendly", "label": "n_friendly", "title": "node / n_friendly\nnode"}, {"id": "n_cold", "label": "n_cold", "title": "node / n_cold\nnode"}, {"id": "after_reaction", "label": "after_reaction", "title": "node / after_reaction\nnode"}, {"id": "n_check", "label": "n_check", "title": "node / n_check\nnode"}, {"id": "good_end", "label": "good_end", "title": "node / good_end\nnode"}, {"id": "bad_end", "label": "bad_end", "title": "node / bad_end\nnode"}, {"id": "end", "label": "end", "title": "node / end\nnode"}];
+const edges = [{"from": "start", "to": "Alice", "label": "default::next"}, {"from": "Alice", "to": "n1", "label": "default::next"}, {"from": "n1", "to": "n2", "label": "default::next"}, {"from": "n2", "to": "n_friendly", "label": "child::option@goto"}, {"from": "n2", "to": "n_cold", "label": "child::option@goto"}, {"from": "n_friendly", "to": "after_reaction", "label": "child::option@goto"}, {"from": "n_cold", "to": "n_check", "label": "goto"}, {"from": "n_cold", "to": "n_check", "label": "child::option@goto"}, {"from": "after_reaction", "to": "n_check", "label": "default::next"}, {"from": "n_check", "to": "good_end", "label": "child::counterTrigger@goto"}, {"from": "n_check", "to": "bad_end", "label": "child::counterTrigger@goto"}, {"from": "good_end", "to": "end", "label": "child::option@goto"}, {"from": "bad_end", "to": "end", "label": "default::next"}];
+const container = document.getElementById('mynetwork');
+const data = {
+  nodes: new vis.DataSet(nodes),
+  edges: new vis.DataSet(edges)
+};
+const options = {
+  nodes: {
+    shape: 'box',
+    margin: 10,
+    widthConstraint: { maximum: 300 }
+  },
+  edges: {
+    arrows: 'to',
+    smooth: { type: 'cubicBezier' }
+  },
+  physics: {
+    stabilization: false,
+    barnesHut: {
+      gravitationalConstant: -20000,
+      springConstant: 0.001,
+      springLength: 200
+    }
+  },
+  interaction: { hover: true }
+};
+const network = new vis.Network(container, data, options);
+
+network.on('click', function(params) {
+    if (params.nodes.length > 0) {
+        const nid = params.nodes[0];
+        const n = nodes.find(x => x.id === nid);
+        alert('节点: ' + nid + '\n' + (n.title || ''));
+    }
+});
+</script>
+</body>
+</html>

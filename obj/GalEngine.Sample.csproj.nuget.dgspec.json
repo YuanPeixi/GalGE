@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "G:\\GalGE\\GalEngine.Sample.csproj": {}
+    "C:\\Users\\HP\\source\\repos\\GalGE\\GalEngine.Sample.csproj": {}
   },
   "projects": {
-    "G:\\GalGE\\GalEngine.Sample.csproj": {
+    "C:\\Users\\HP\\source\\repos\\GalGE\\GalEngine.Sample.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "G:\\GalGE\\GalEngine.Sample.csproj",
+        "projectUniqueName": "C:\\Users\\HP\\source\\repos\\GalGE\\GalEngine.Sample.csproj",
         "projectName": "GalEngine.Sample",
-        "projectPath": "G:\\GalGE\\GalEngine.Sample.csproj",
+        "projectPath": "C:\\Users\\HP\\source\\repos\\GalGE\\GalEngine.Sample.csproj",
         "packagesPath": "C:\\Users\\HP\\.nuget\\packages\\",
-        "outputPath": "G:\\GalGE\\obj\\",
+        "outputPath": "C:\\Users\\HP\\source\\repos\\GalGE\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
