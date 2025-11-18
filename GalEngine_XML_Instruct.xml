@@ -1,0 +1,139 @@
+# GalEngine XML 规范（完整说明）
+
+下面是针对当前 WPF+XML galgame 引擎的完整 XML 格式说明、行为（特别是“没有选项的 node 如何跳转”）和若干范例。该规范对应我们实现的引擎行为与解析规则。
+
+总体说明
+- 根元素：<story>。子节点为若干 <node>，引擎按节点列表顺序推进（除非被跳转覆盖）。
+- 每个 <node> 表示“台词/画面帧”或控制点。节点可以包含文本、角色、资源设置、选项、对计数器的修改与触发器等。
+- 继承规则：在解析阶段（加载 story.xml 时）实现“继承”：
+  - 除了 <text> 之外，节点未在 XML 中显式设置的属性会继承上一节点解析后的值（背景、音乐、speaker、角色列表等）。
+  - 若某节点显式设置了属性（包括设置为空字符串 bg="" 或 music=""），则视为“显式设置”，不会从上一节点继承；空字符串可用于清除对应资源。
+- 运行时推进（行为流程，请务必注意顺序）：
+  1. 进入节点 -> 引擎触发 NodeChanged 以更新 UI（背景/角色/音乐/说话人/文本/选项等）。
+  2. 引擎应用该节点下的 <change>（节点内对计数器的修改）。
+  3. 引擎检查该节点下的所有 <counterTrigger>（按在 XML 中出现的顺序）。如果某个触发器满足条件，则立即跳转到触发器指定的目标节点（第一次匹配且目标存在时立即跳转并停止检查其余触发器）。跳转到目标节点后重复上述进入节点流程（注意：要避免死循环）。
+  4. 如果节点有选项（<option>），引擎会在 UI 中显示选项按钮并等待玩家选择；选项被点击会：
+     - 立即应用该 option 中的 <change>（或 affect 属性）
+     - 如果 option 指定 goto，跳到目标节点并进入该节点流程
+     - 否则按顺序走到当前节点后的下一个节点（即 Next）
+  5. 如果节点没有任何选项（这是你关心的情况），引擎不会停留等待玩家选择（但会等待玩家点击 “下一句/Next” 或自动推进逻辑，取决于前端 UI 实现）。在我们的示例实现：
+     - 没有选项时，界面显示“下一句”按钮；玩家点“下一句”时，执行 StoryEngine.Next()，Next() 会把 _position++，进入下一节点并触发进入节点流程（步骤 1~3）。
+     - 如果你想实现无玩家交互的自动推进，可在 UI 层上在节点进入后启动计时，计时结束后调用 Next()。
+  6. 计数器触发（counterTrigger）在进入节点时检查：这意味着节点内的 <change> 会先生效，再检查是否满足 trigger 条件，从而允许“本节点的 change 使得触发满足并跳转”。
+
+元素说明（逐项）
+
+- <story>
+  - 说明：根元素，包含若干 <node>。
+
+- <node>（必选 id 属性建议唯一）
+  - 属性：
+    - id (string, 可选但建议唯一)：节点标识，用于 goto 跳转查找。
+    - bg (string, 可选)：背景图片路径（相对于运行目录），如果未出现该属性则继承上一节点的背景；如果出现但为空（bg=""），表示显式清空背景。
+    - music (string, 可选)：背景音乐文件路径；与 bg 一样，未写则继承，写为空则停止/清空音乐。
+    - speaker (string, 可选)：说话者名字；未写则继承。
+  - 子元素：
+    - <text> 文本内容（string）：节点要显示的台词/描述。文本不会被继承（即如果节点没有 <text>，它显示为空，除非你故意用继承语义把上一节点内容复制到下一节点，但当前实现不继承 text）。
+    - 0..* <character>：角色状态
+    - 0..* <option>：选项（如果存在，UI 显示选项并等待玩家）。
+    - 0..* <change>：进入该节点时要应用的计数器增量/变化。
+    - 0..* <counterTrigger>：计数器检测器，满足条件则跳转。
+  - 行为总结：
+    - 进入节点时立即触发 UI 更新（NodeChanged），然后应用本节点所有 <change>，再检查 <counterTrigger>，触发时跳转。
+
+- <character>
+  - 属性：
+    - name (string, 可选)：角色名（仅作记录/后续扩展用）。
+    - image (string, 可选)：角色图片路径（相对路径），如果未指定则不绘制该角色。
+    - side (string, 可选，默认 "left")：left / right（决定简单布局）。
+    - expression (string, 可选)：表情/状态（当前实现未直接用该字段加载不同资源，作为语义字段供扩展）。
+  - 说明：如果某个节点没有任何 <character> 子元素，则在加载时会继承上一节点的角色列表（浅拷贝）。如果需要在某节点清空角色，则显式写出一个空的 characters 表示方法（当前实现没有专用元素来“清空”角色，建议在下一版本添加 clearCharacters 属性或支持 <characters clear="true"/>）。
+
+- <option>
+  - 属性：
+    - text (string, 必需)：选项按钮上显示的文字。
+    - goto (string, 可选)：目标节点 id，点击该选项后跳转到此节点（如果找不到 id，则按顺序进入下一节点）。
+    - affect (string, 可选，兼容旧语法)：例如 "like:+1,other:-2"，会解析为若干计数器变化。
+  - 子元素：
+    - 0..* <change counter="..." delta="..."/>：与 affect 等效，推荐使用子元素的方式更清晰。
+  - 行为：
+    - 玩家点击后立即应用 option 内的 change（计数器变化），再尝试跳转到 goto（若有），否则走到顺序下一个节点。
+
+- <change>
+  - 语法（子元素或 node 内）：
+    - <change counter="like" delta="1" />
+  - 说明：在进入包含它的节点时会对指定计数器做累加（可以是正负）。option 的 <change> 在点击选项时立即应用；node 的 <change> 在进入该节点时应用。
+
+- <counterTrigger>
+  - 属性：
+    - counter (string, 必需)：计数器名
+    - operator (string, 可选)：比较运算（">=", "<=", ">", "<", "==", "="），默认 ">="。
+    - value (int, 必需)：比较目标值
+    - goto (string, 必需)：满足条件时要跳转到的节点 id
+  - 说明：当进入该 node 时（并在该 node 的 <change> 应用后）逐条按出现顺序检测 trigger。第一个满足的 trigger 将使引擎立即跳转到指定 goto（并停止检查剩余 triggers）。如果 goto 对应的 id 未找到，则忽略该 trigger（或按实现日志记录）并继续检查下一 trigger。
+
+流程示例（无选项节点如何跳转）
+1. 顺序推进（默认）
+   - 若节点 A 没有 <option>，玩家点击“下一句”或前端调用 Next()，引擎把位置移到列表中下一个节点 B（按 file 中顺序），然后执行“进入节点 B”的流程（UI 更新 -> apply B changes -> 检查 B triggers）。
+2. 自动触发跳转（counterTrigger）
+   - 若节点 B 自身包含 <counterTrigger> 并且在进入 B 后条件满足，系统会立即把位置跳转到 trigger 指向的结点（例如 good_end）。因此，即使 B 没有 option，也可以通过 change + trigger 组合实现分支跳转（例如 B 含 <change counter="like" delta="1"/> 且含 <counterTrigger counter="like" operator=">=" value="2" goto="good_end" />）。
+3. Option-less 自动推进
+   - 如果希望节点在显示后自动推进（无需玩家点击下一句），请在 UI 层（前端）实现一个定时器：在 NodeChanged 之后启动计时，计时结束后调用 Next()。这不是 XML 层的行为，而是 UI 层策略。
+
+完整示例（包含无 option 的跳转示例）
+```xml
+<story>
+  <node id="n0" bg="Assets/bg_home.jpg" music="Assets/bgm.mp3">
+    <text>你醒来在房间里。</text>
+    <change counter="like" delta="0" />
+  </node>
+
+  <node id="n1">
+    <text>艾丽丝出现了。</text>
+  </node>
+
+  <!-- n2 没有 option，玩家点下一句会进入 n_check；n2 有 change 会影响计数器 -->
+  <node id="n2">
+    <text>你和艾丽丝聊了一会儿。</text>
+    <change counter="like" delta="1" />
+  </node>
+
+  <!-- n_check 进入时会检查 like 的值；如果满足会立即跳转到 good_end 或 bad_end -->
+  <node id="n_check">
+    <text>午后散步。</text>
+    <counterTrigger counter="like" operator=">=" value="2" goto="good_end" />
+    <counterTrigger counter="like" operator="<=" value="-1" goto="bad_end" />
+  </node>
+
+  <node id="good_end" bg="Assets/bg_park.jpg">
+    <text>好结局：你们在公园相拥。</text>
+  </node>
+
+  <node id="bad_end" bg="Assets/bg_street.jpg">
+    <text>坏结局：你们分道扬镳。</text>
+  </node>
+</story>
+```
+
+额外注意事项与建议
+- ID 唯一性：建议每个 node 的 id 唯一，用于 goto 查找。
+- 触发器顺序：若同一节点有多个 <counterTrigger>，按文中顺序逐个判断，第一条匹配会生效（当前实现如此）。
+- 清除资源：要显式清除背景或音乐，设置属性为 ""（例如 bg="" 或 music=""），这会被视为“显式设置”为空而不再继承上一节点的设置。
+- 多次应用问题：当前实现确保每个节点的 <change> 只在“进入该节点”时应用一次；option 的 <change> 在点击时应用一次。
+- 扩展建议：若想在 XML 层实现“立即跳转而不显示该 node 的 UI”，可以增加 node 属性 redirect="true" 表示该节点为逻辑跳转点（当前实现不包含该属性，需要扩展引擎）。或者在 node 中用仅包含 <change> 与 <counterTrigger> 的方式作为“判定节点”。
+- 调试建议：在开发剧情时，给每个 node 写明确 id 并在关键处用 <counterTrigger> 检查好感值，方便通过日志追踪行为。
+
+简要 FAQ
+- 问：如果一个 node 没有 option，也没有 change/trigger，会怎样？
+  - 答：引擎会等待玩家通过“下一句”或外部调用 Next() 来进入下一个 node（UI 可以决定是否自动推进）。
+- 问：在进入 node 后先展示文本再触发 change/trigger，还是先触发再展示？
+  - 答：引擎先触发 NodeChanged（UI 展示），随后在内部应用 node.Changes 并检查 triggers（因此玩家通常会看到该 node 的画面/文本，随后可能马上被跳转）。
+- 问：如果两个 trigger 都满足，哪个会被执行？
+  - 答：按在 XML 中出现的顺序，第一个匹配的 trigger 会立即跳转并停止后续检查。
+
+如果你想，我可以：
+- 给出一个完整的 XML Schema (XSD) 文件用于验证剧本文件（自动化校验 id 唯一性/必需属性等）。
+- 增加 node 的 redirect/autoNext/timeout 属性以在 XML 层直接控制自动推进，而无需修改 UI。
+- 把“清空/继承角色”行为改为更细粒度的合并/覆盖语义（支持按 name 覆盖单个角色），并更新 XML 规范。
+
+你想先要 XSD 还是在 XML 中加入 autoNext/timeout 之类的字段？
